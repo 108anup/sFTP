@@ -16,7 +16,7 @@ WARNINGS = -Wall -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers
 CFLAGS = -g
 CPPFLAGS = -I$(CLIENT_SRCDIR) -I$(SERVER_SRCDIR) -I$(COMMON_SRCDIR)
 LDFLAGS =
-LDLIB =
+LDLIB = -lreadline
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 
 CLIENT_SOURCES = $(shell find $(CLIENT_SRCDIR) -type f -name "*.c")
@@ -42,6 +42,7 @@ $(shell mkdir -p $(OUTPUTDIR) > /dev/null)
 all: build link
 
 dependencies:
+	sudo apt-get install libreadline-dev
 
 build: $(CLIENT_OBJECTS) $(COMMON_OBJECTS) $(SERVER_OBJECTS)
 link: $(TARGET_CLIENT) $(TARGET_SERVER)

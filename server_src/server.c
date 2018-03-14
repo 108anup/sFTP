@@ -2,10 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
 #include "server.h"
 #include "handler.h"
 
@@ -73,6 +75,8 @@ int main(int argc, char *argv[]){
     
     send(connfd, msg, strlen(msg) , 0);
     printf("\nMessage sent to %s:%d\n", client_ip, client_port);
+
+    close(connfd);
   }
   
   return 0;
