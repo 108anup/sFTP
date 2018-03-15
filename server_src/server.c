@@ -31,7 +31,8 @@ static void server_put(int num_files){
   int file_exists;
 
   for(int i = 0; i<num_files; i++){
-    
+
+    memset(fname, '\0', sizeof(fname));
     file_size = recv_file_metadata(connfd, fname);
     if(access(fname, F_OK) != -1)
       file_exists = 1;
@@ -96,7 +97,7 @@ int main(int argc, char *argv[]){
   }
 
   struct sockaddr_in client_address;
-  socklen_t addrlen;
+  socklen_t addrlen = sizeof((struct sockaddr *) &client_address);
   
   while(true){
     if ((connfd = accept(listenfd, (struct sockaddr *) &client_address,

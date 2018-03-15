@@ -104,11 +104,63 @@ void put(int argc, char *argv[]){
 }
 
 void mput(int argc, char *argv[]){
-  put(argc, argv);
+  int num_files = 0;
+  char *file_names[SIZE];
+  char cmd[BUFF_SIZE];
+  sprintf(cmd, "find . -maxdepth 1 -type f -name \"%s\" -printf '%%P\n'",
+          argv[1]);
+
+  FILE *fp = popen(cmd, "r");
+  if (fp == NULL) {
+    printf("\nError: Failed to run find command.\n" );
+    return;
+  }
+
+  char *buff = (char *) malloc(sizeof(char)*SIZE);
+  while(fscanf(fp, "%[^\n]%*c", buff) > 0){
+    file_names[num_files++] = buff;
+    buff = (char *) malloc(sizeof(char)*SIZE);
+  }
+  pclose(fp);
+  put(num_files, file_names);
 }
 
 void get(int argc, char *argv[]){
-  put(argc, argv);
+  if (init_sockets() < 0){
+    printf("\nError: unable to initialize sockets.\n");
+    return;
+  }  
+  if (send_protocol_header(GET, sockfd, argc - 1) != 1)
+    return;
+  
+  int fd;
+  int num_retry = 0;
+  int file_size = 0;
+  char *fname = NULL;
+  for(int i = 1; i<argc; i++){
+    fname = argv[i];
+    
+    fd = open(fname, O_RDONLY);
+    if(fd < 0)
+    {
+      printf("\nError: Unable to open file: %s\n", fname);
+      continue;
+    }
+    if ((file_size = send_file_metadata(fd, fname, sockfd)) < 0)
+      continue;
+    
+    int file_exists;
+    if((file_exists = get_int_from_conn(sockfd)) == -1){
+      return;
+    }
+    if(file_exists && (handle_conflict(sockfd) == 0)){
+      continue;
+    }
+    send_file(fd, fname, file_size, sockfd, &i, &num_retry);
+    close(fd);
+  }
+  
+  close(sockfd);
 }
 
 void mget(int argc, char *argv[]){

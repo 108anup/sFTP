@@ -139,7 +139,12 @@ int recv_file_metadata(int sock_desc, char *fname){
 
 void recv_file(char *fname,
                int file_size, int sock_desc, int *i, int *num_retry){
-  int fd = open(fname, O_WRONLY | O_CREAT);
+  int fd = open(fname, O_WRONLY | O_CREAT,
+                S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP
+                | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
+  if(fd < 0){
+    printf("\nError: Unable to create file");
+  }
   int read_bytes = 0;
   char file_buffer[FILE_CHUNK_BUFF_SIZE];
   int current_read = 0;
