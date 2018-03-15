@@ -133,7 +133,8 @@ int recv_file_metadata(int sock_desc, char *fname){
   }
 
   memcpy(fname, recv_buffer, file_name_size);
-  printf("\nRecd file metadata: %s, %d.\n", fname, file_size);
+  fname[file_name_size] = '\0';
+  printf("\nRecd file metadata: %*s, %d.\n", file_name_size, fname, file_size);
   return file_size;
 }
 

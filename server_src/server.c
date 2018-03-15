@@ -17,6 +17,7 @@
 #include "handler.h"
 
 static int connfd = 0;
+static char *current;
 static char recv_buffer[BUFF_SIZE];
 static int readlen = 0;
 
@@ -51,6 +52,63 @@ static void server_put(int num_files){
 }
 
 static void server_get(int num_files){
+
+  int num_retry = 0;
+  char fname[BUFF_SIZE];
+  int file_on_server = 0;
+
+  int fd;
+  int file_name_size;
+  int file_size;
+  int conflict_choice = 0;
+  
+  for(int i = 0; i<num_files; i++){
+
+    conflict_choice = get_int_from_conn(connfd);
+    if(conflict_choice <= 0){
+      printf("\nSkipping file.\n");
+      continue;
+    }
+
+    file_name_size = get_int_from_conn(connfd);
+    current = recv_buffer;
+    readlen = read(connfd, recv_buffer, file_name_size);
+
+    if(readlen < file_name_size){
+      printf("\nError: Invalid protocol\n");
+      return;
+    }
+
+    memcpy(fname, recv_buffer, file_name_size);
+    fname[file_name_size] = '\0';
+    printf("\nRecd file name: %s.\n", fname);
+    
+    if(access(fname, F_OK) != -1)
+      file_on_server = 1;
+    else
+      file_on_server = 0;
+    
+    send_int_to_conn(connfd, file_on_server);
+    if(file_on_server == 0){
+      continue;
+    }
+
+    fd = open(fname, O_RDONLY);
+    if(fd < 0)
+    {
+      printf("\nError: Unable to open file: %s\n", fname);
+      continue;
+    }
+    
+    if ((file_size = send_file_metadata(fd, fname, connfd)) < 0)
+      continue;
+    send_file(fd, fname, file_size, connfd, &i, &num_retry);
+    close(fd);
+  }
+}
+
+static void server_mget(){
+
 }
 
 int main(int argc, char *argv[]){
@@ -106,34 +164,20 @@ int main(int argc, char *argv[]){
       printf("\nError: Unable to accept connection, errcode: %d.\n", errno);
       continue;
     }
-
-    memset(recv_buffer, '\0', sizeof(recv_buffer));
-    readlen = read(connfd, recv_buffer, sizeof(int) * 2);
-
-    if(readlen < sizeof(int) * 2){
-      printf("\nError: Client not following protocol\n");
-      continue;
-    }
-    
-    int protocol;
-    int num_files;
-    char *current = recv_buffer;
-    
-    memcpy(&protocol, current, sizeof(int));
-    current += sizeof(int);
-    memcpy(&num_files, current, sizeof(int));
-
     inet_ntop(AF_INET, &(client_address.sin_addr), client_ip, INET_ADDRSTRLEN);
     client_port = ntohs(client_address.sin_port);
-    printf("\nGot %d bytes from %s:%d as: (%d, %d)\n", readlen, client_ip,
-           client_port, protocol, num_files);
-
+    printf("\nClient %s:%d connected.\n", client_ip, client_port);
+    
+    int protocol = get_int_from_conn(connfd);
+    int num_files = get_int_from_conn(connfd);
+    
     //Send ACK
     send_int_to_conn(connfd, 1);
 
     switch(protocol){
     case PUT: server_put(num_files); break;
     case GET: server_get(num_files); break;
+    case MGET: server_mget(); break;
     default: printf("\nError: Invalid protocol.\n"); break;
     }
     

@@ -7,6 +7,7 @@ COMMON_SRCDIR := common_src
 BUILDDIR := build
 DEPDIR := deps
 OUTPUTDIR := bin
+SERVER_ROOT := server_root
 TARGET_CLIENT := $(OUTPUTDIR)/client
 TARGET_SERVER := $(OUTPUTDIR)/server
 
@@ -38,6 +39,7 @@ POSTCOMPILE = @mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 $(shell mkdir -p $(DEPDIR) > /dev/null)
 $(shell mkdir -p $(BUILDDIR) > /dev/null)
 $(shell mkdir -p $(OUTPUTDIR) > /dev/null)
+$(shell mkdir -p $(SERVER_ROOT) > /dev/null)
 
 all: build link
 
@@ -82,7 +84,7 @@ cscope:
 	cscope -b -q -k
 
 clean:
-	$(RM) -r -v $(BUILDDIR) $(OUTPUTDIR) $(DEPDIR)
+	$(RM) -r -v $(BUILDDIR) $(OUTPUTDIR) $(DEPDIR) $(SERVER_ROOT)
 
 cleanall: clean
 	$(RM) -v cscope.* TAGS

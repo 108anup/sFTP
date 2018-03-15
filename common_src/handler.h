@@ -1,7 +1,7 @@
 #ifndef HANDLER_H
 #define HANDLER_H
 
-enum {PUT, GET};
+enum {PUT, GET, MGET};
 #define FILE_CHUNK_BUFF_SIZE 1024
 #define MAX_RETRIES 3
 #define BUFF_SIZE 1024
