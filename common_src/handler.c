@@ -56,6 +56,13 @@ int send_protocol_header(int protocol, int sock_desc, int num_files){
  * Next (file name length) bytes: file name
  */
 int send_file_metadata(int fd, char *fname, int sock_desc){
+
+  if(fd < 0){
+    printf("\nError: Unable to open file.\n");
+    send_int_to_conn(sock_desc, 0);
+    return 0;
+  }
+  
   struct stat file_stat;
 
   if(fstat((int) fd, &file_stat) < 0)
@@ -111,20 +118,12 @@ void send_file(int fd, char *fname,
 }
 
 int recv_file_metadata(int sock_desc, char *fname){
-  readlen = read(sock_desc, recv_buffer, sizeof(int) * 2);
-  if(readlen < sizeof(int) * 2){
-    printf("\nError: Invalid protocol\n");
-    return -1;
-  }
 
-  int file_name_size;
-  int file_size;
-
-  current = recv_buffer;
-  memcpy(&file_name_size, current, sizeof(int));
-  current += sizeof(int);
-  memcpy(&file_size, current, sizeof(int));
-
+  int file_name_size = get_int_from_conn(sock_desc);
+  if(file_name_size == 0)
+    return 0;
+  
+  int file_size = get_int_from_conn(sock_desc);
   readlen = read(sock_desc, recv_buffer, file_name_size);
 
   if(readlen < file_name_size){

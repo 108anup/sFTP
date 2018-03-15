@@ -88,20 +88,10 @@ void put(int argc, char *argv[]){
     current = send_buffer;
 
     fd = open(fname, O_RDONLY);
-    if(fd < 0)
-    {
-      printf("\nError: Unable to open file: %s\n", fname);
-      /* file_name_size = 0; */
-      /* memcpy(current, &file_name_size, sizeof(int)); */
-      /* current += sizeof(int); */
-      /* memcpy(current, &file_name_size, sizeof(int)); */
-
-      /* send(sock_desc, send_buffer, sizeof(int) * 2, 0); */
-      /* printf("\nSkipping file: %s\n", fname); */
+    if ((file_size = send_file_metadata(fd, fname, sockfd)) <= 0){
+      printf("\nSkipping file: %s\n", fname);
       continue;
     }
-    if ((file_size = send_file_metadata(fd, fname, sockfd)) < 0)
-      continue;
     
     int file_exists;
     if((file_exists = get_int_from_conn(sockfd)) == -1){
@@ -191,7 +181,10 @@ void get(int argc, char *argv[]){
       continue;
     }
 
-    file_size = recv_file_metadata(sockfd, temp);
+    if((file_size = recv_file_metadata(sockfd, temp)) <= 0){
+      printf("\nServer unable to open file: %s\n", fname);
+      continue;
+    }
     recv_file(fname, file_size, sockfd, &i, &num_retry);
   }
   close(sockfd);
@@ -224,7 +217,12 @@ void mget(int argc, char *argv[]){
   int num_retry;
   int num_files = get_int_from_conn(sockfd);
   for(int i = 0; i<num_files; i++){
-    file_size = recv_file_metadata(sockfd, fname);
+
+    if((file_size = recv_file_metadata(sockfd, fname)) <= 0){
+      printf("\nServer unable to open file: %s\n", fname);
+      continue;
+    }
+    
     if(access(fname, F_OK) != -1)
       file_exists = 1;
     else

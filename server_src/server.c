@@ -35,7 +35,11 @@ static void server_put(int num_files){
   for(int i = 0; i<num_files; i++){
 
     memset(fname, '\0', sizeof(fname));
-    file_size = recv_file_metadata(connfd, fname);
+    if((file_size = recv_file_metadata(connfd, fname)) <= 0){
+      printf("\nClient unable to open file: %s\n", fname);
+      continue;
+    }
+    
     if(access(fname, F_OK) != -1)
       file_exists = 1;
     else
@@ -95,20 +99,17 @@ static void server_get(int num_files){
     }
 
     fd = open(fname, O_RDONLY);
-    if(fd < 0)
-    {
-      printf("\nError: Unable to open file: %s\n", fname);
+    if ((file_size = send_file_metadata(fd, fname, connfd)) <= 0){
+      printf("\nSkipping file: %s\n", fname);
       continue;
     }
-    
-    if ((file_size = send_file_metadata(fd, fname, connfd)) < 0)
-      continue;
+
     send_file(fd, fname, file_size, connfd, &i, &num_retry);
     close(fd);
   }
 }
 
-static void server_mget(){
+static void server_mget(void){
 
   int regex_length = get_int_from_conn(connfd);
   readlen = read(connfd, recv_buffer, regex_length);
@@ -151,13 +152,10 @@ static void server_mget(){
     current = send_buffer;
 
     fd = open(fname, O_RDONLY);
-    if(fd < 0)
-    {
-      printf("\nError: Unable to open file: %s\n", fname);
+    if ((file_size = send_file_metadata(fd, fname, connfd)) <= 0){
+      printf("\nSkipping file: %s\n", fname);
       continue;
     }
-    if ((file_size = send_file_metadata(fd, fname, connfd)) < 0)
-      continue;
     
     int conflict_choice = get_int_from_conn(connfd);
     if(conflict_choice <= 0){
