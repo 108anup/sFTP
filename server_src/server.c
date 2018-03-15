@@ -157,10 +157,11 @@ int main(int argc, char *argv[]){
     if ((connfd = accept(listenfd, (struct sockaddr *) &client_address,
                          &addrlen)) < 0)
     {
-      printf("\nError: Unable to accept connection.\n");
+      printf("\nError: Unable to accept connection, errcode: %d.\n", errno);
       continue;
     }
 
+    memset(recv_buffer, '\0', sizeof(recv_buffer));
     readlen = read(connfd, recv_buffer, sizeof(int) * 2);
 
     if(readlen < sizeof(int) * 2){
