@@ -11,5 +11,7 @@ int get_int_from_conn(int);
 int send_protocol_header(int, int, int);
 int send_file_metadata(int, char *, int);
 void send_file(int, char *, int, int, int *, int *);
+int recv_file_metadata(int, char *);
+void recv_file(char *, int, int, int *, int *);
 
 #endif

@@ -26,34 +26,13 @@ static int client_port = 0;
 static void server_put(int num_files){
 
   int num_retry = 0;
+  char fname[BUFF_SIZE];
+  int file_size;
+  int file_exists;
+
   for(int i = 0; i<num_files; i++){
-    readlen = read(connfd, recv_buffer, sizeof(int) * 2);
-
-    if(readlen < sizeof(int) * 2){
-      printf("\nError: Client not following PUT protocol\n");
-      continue;
-    }
-
-    int file_name_size;
-    int file_size;
-    char *current = recv_buffer;
     
-    memcpy(&file_name_size, current, sizeof(int));
-    current += sizeof(int);
-    memcpy(&file_size, current, sizeof(int));
-
-    readlen = read(connfd, recv_buffer, file_name_size);
-
-    if(readlen < file_name_size){
-      printf("\nError: Client not following PUT protocol\n");
-      return;
-    }
-
-    char fname[255];
-    memcpy(fname, recv_buffer, file_name_size);
-
-    printf("\nRecd at server: %s, %d.\n", fname, file_size);
-    int file_exists;
+    file_size = recv_file_metadata(connfd, fname);
     if(access(fname, F_OK) != -1)
       file_exists = 1;
     else
@@ -65,42 +44,8 @@ static void server_put(int num_files){
       if(choice <= 0)
         continue;
     }
-    
-    // Recv file
-    int fd = open(fname, O_WRONLY | O_CREAT);
-    int read_bytes = 0;
-    char file_buffer[FILE_CHUNK_BUFF_SIZE];
-    int current_read = 0;
-    while(read_bytes < file_size){
-      current_read = read(connfd, file_buffer, FILE_CHUNK_BUFF_SIZE);
 
-      if(current_read < 0){
-        printf("\nError: Client not following PUT protocol\n");
-        break;
-      }
-
-      write(fd, file_buffer, current_read);
-      read_bytes += current_read;
-    }
-
-    close(fd);
-    printf("\nFile %s recieved with %d bytes.\n", fname, read_bytes);
-    
-    int got_full_file = 0;
-    if(read_bytes == file_size)
-    {
-      num_retry = 0;
-      got_full_file = 1;
-    }
-    else
-    {
-      if(num_retry < MAX_RETRIES){
-        num_retry++;
-        i--; //Retry
-      }
-    }
-
-    send_int_to_conn(connfd, got_full_file);
+    recv_file(fname, file_size, connfd, &i, &num_retry);
   }
 }
 

@@ -104,39 +104,15 @@ void put(int argc, char *argv[]){
 }
 
 void mput(int argc, char *argv[]){
-  char *msg = "Hello from Client";
-  char buffer[BUFF_SIZE];
-  memset(buffer, '\0', sizeof(buffer));
-  
-  send(sockfd, msg, strlen(msg), 0);
-  printf("\nMessage sent to server\n");
-  
-  int readlen = read(sockfd, buffer, BUFF_SIZE);
-  printf("\nGot from sever: %*s\n", readlen, buffer);
+  put(argc, argv);
 }
 
 void get(int argc, char *argv[]){
-  char *msg = "Hello from Client";
-  char buffer[BUFF_SIZE];
-  memset(buffer, '\0', sizeof(buffer));
-  
-  send(sockfd, msg, strlen(msg), 0);
-  printf("\nMessage sent to server\n");
-  
-  int readlen = read(sockfd, buffer, BUFF_SIZE);
-  printf("\nGot from sever: %*s\n", readlen, buffer);
+  put(argc, argv);
 }
 
 void mget(int argc, char *argv[]){
-  char *msg = "Hello from Client";
-  char buffer[BUFF_SIZE];
-  memset(buffer, '\0', sizeof(buffer));
-  
-  send(sockfd, msg, strlen(msg), 0);
-  printf("\nMessage sent to server\n");
-  
-  int readlen = read(sockfd, buffer, BUFF_SIZE);
-  printf("\nGot from sever: %*s\n", readlen, buffer);
+  put(argc, argv);
 }
 
 int main(int argc, char *argv[]){
