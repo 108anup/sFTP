@@ -204,7 +204,41 @@ void mget(int argc, char *argv[]){
   }  
   if (send_protocol_header(MGET, sockfd, argc - 1) != 1)
     return;
+
+  int regex_length;
+  char *regex = argv[1];
+  int file_size = 0;
+  int file_exists;
+  char fname[BUFF_SIZE];
   
+  // Sending regex
+  current = send_buffer;
+  regex_length = strlen(regex);
+  memcpy(current, &regex_length, sizeof(int));
+  current += sizeof(int);
+  memcpy(current, regex, regex_length);
+  send(sockfd, send_buffer, sizeof(int) + regex_length, 0);
+  printf("\nSending regex as:"
+         " %s (%d)\n", regex, regex_length);
+
+  int num_retry;
+  int num_files = get_int_from_conn(sockfd);
+  for(int i = 0; i<num_files; i++){
+    file_size = recv_file_metadata(sockfd, fname);
+    if(access(fname, F_OK) != -1)
+      file_exists = 1;
+    else
+      file_exists = 0;
+     
+    if(file_exists && (handle_conflict(sockfd) == 0)){
+      printf("\nSkipping file: %s\n", fname);
+      continue;
+    }
+    else if(!file_exists){
+      send_int_to_conn(sockfd, 1);
+    }
+    recv_file(fname, file_size, sockfd, &i, &num_retry);
+   }
 }
 
 int main(int argc, char *argv[]){

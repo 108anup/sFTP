@@ -19,6 +19,7 @@
 static int connfd = 0;
 static char *current;
 static char recv_buffer[BUFF_SIZE];
+static char send_buffer[BUFF_SIZE];
 static int readlen = 0;
 
 static char client_ip[INET_ADDRSTRLEN];
@@ -109,6 +110,62 @@ static void server_get(int num_files){
 
 static void server_mget(){
 
+  int regex_length = get_int_from_conn(connfd);
+  readlen = read(connfd, recv_buffer, regex_length);
+  current = recv_buffer;
+
+  char regex[BUFF_SIZE];
+  memcpy(regex, recv_buffer, regex_length);
+  regex[regex_length] = '\0';
+
+  int num_files = 0;
+  char *file_names[BUFF_SIZE];
+  char cmd[BUFF_SIZE];
+  sprintf(cmd, "find . -maxdepth 1 -type f -name \"%s\" -printf '%%P\n'",
+          regex);
+
+  //Get Files
+  FILE *fp = popen(cmd, "r");
+  if (fp == NULL) {
+    printf("\nError: Failed to run find command.\n" );
+    return;
+  }
+
+  char *buff = (char *) malloc(sizeof(char) * BUFF_SIZE);
+  while(fscanf(fp, "%[^\n]%*c", buff) > 0){
+    file_names[num_files++] = buff;
+    buff = (char *) malloc(sizeof(char) * BUFF_SIZE);
+  }
+  pclose(fp);
+
+  send_int_to_conn(connfd, num_files);
+
+  //Send Files
+  int fd;
+  int file_size;
+  
+  int num_retry;
+  char *fname = NULL;
+  for(int i = 0; i<num_files; i++){
+    fname = file_names[i];
+    current = send_buffer;
+
+    fd = open(fname, O_RDONLY);
+    if(fd < 0)
+    {
+      printf("\nError: Unable to open file: %s\n", fname);
+      continue;
+    }
+    if ((file_size = send_file_metadata(fd, fname, connfd)) < 0)
+      continue;
+    
+    int conflict_choice = get_int_from_conn(connfd);
+    if(conflict_choice <= 0){
+      continue;
+    }
+    send_file(fd, fname, file_size, connfd, &i, &num_retry);
+    close(fd);
+  }
 }
 
 int main(int argc, char *argv[]){
@@ -164,13 +221,28 @@ int main(int argc, char *argv[]){
       printf("\nError: Unable to accept connection, errcode: %d.\n", errno);
       continue;
     }
+
+    memset(recv_buffer, '\0', sizeof(recv_buffer));
+    readlen = read(connfd, recv_buffer, sizeof(int) * 2);
+
+    if(readlen < sizeof(int) * 2){
+      printf("\nError: Client not following protocol\n");
+      continue;
+    }
+    
+    int protocol;
+    int num_files;
+    char *current = recv_buffer;
+    
+    memcpy(&protocol, current, sizeof(int));
+    current += sizeof(int);
+    memcpy(&num_files, current, sizeof(int));
+
     inet_ntop(AF_INET, &(client_address.sin_addr), client_ip, INET_ADDRSTRLEN);
     client_port = ntohs(client_address.sin_port);
-    printf("\nClient %s:%d connected.\n", client_ip, client_port);
-    
-    int protocol = get_int_from_conn(connfd);
-    int num_files = get_int_from_conn(connfd);
-    
+    printf("\nGot %d bytes from %s:%d as: (%d, %d)\n", readlen, client_ip,
+           client_port, protocol, num_files);
+
     //Send ACK
     send_int_to_conn(connfd, 1);
 
