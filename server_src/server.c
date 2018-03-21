@@ -12,11 +12,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <signal.h>
 
 #include "server.h"
 #include "handler.h"
 
-static int connfd = 0;
+static int listenfd = -1;
+static int connfd = -1;
 static char *current;
 static char recv_buffer[BUFF_SIZE];
 static char send_buffer[BUFF_SIZE];
@@ -24,6 +26,8 @@ static int readlen = 0;
 
 static char client_ip[INET_ADDRSTRLEN];
 static int client_port = 0;
+
+static volatile int keep_running = 1;
 
 static void server_put(int num_files){
 
@@ -166,6 +170,28 @@ static void server_mget(void){
   }
 }
 
+static void sigint_handler(int dummy) {
+  keep_running = 0;
+  printf("\nSIGINT invoked: Terminating the server.\n");
+
+  if(connfd >= 0){
+    printf("\nShutting down and closing connection.\n");
+    shutdown(connfd, 2);
+    close(connfd);
+  }
+
+  if(listenfd >= 0){
+    int t = 1;
+    printf("\nReleasing socket.\n");
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT, &t, sizeof(int)) < 0){
+      printf("\nUnable to gracefully terminate.\n");
+    }
+    shutdown(listenfd, 2);
+    close(listenfd);
+    printf("\nClosing socket.\n");
+  }
+}
+
 int main(int argc, char *argv[]){
   if (argc != 2)
   {
@@ -173,13 +199,14 @@ int main(int argc, char *argv[]){
     return -1;
   }
 
+  signal(SIGINT, sigint_handler);
+
   char curr_dir[BUFF_SIZE];
   getcwd(curr_dir, sizeof(curr_dir));
   printf("\nWorking dir of server:\n\"%s\".\n", curr_dir);
 
   const int PORT = atoi(argv[1]);
   const int MAX_BACKLOG = 10;
-  int listenfd = 0;
   struct sockaddr_in serv_addr;
   memset(&serv_addr, '0', sizeof(serv_addr));
   memset(recv_buffer, '\0', sizeof(recv_buffer));
@@ -199,6 +226,7 @@ int main(int argc, char *argv[]){
   {
     printf("\nError: Bind Failed, descriptors "
            "incorrect or address/port already in use.\n");
+    close(listenfd);
     return -1;
   }
   
@@ -212,7 +240,7 @@ int main(int argc, char *argv[]){
   struct sockaddr_in client_address;
   socklen_t addrlen = sizeof((struct sockaddr *) &client_address);
   
-  while(true){
+  while(keep_running){
     if ((connfd = accept(listenfd, (struct sockaddr *) &client_address,
                          &addrlen)) < 0)
     {
@@ -250,9 +278,10 @@ int main(int argc, char *argv[]){
     case MGET: server_mget(); break;
     default: printf("\nError: Invalid protocol.\n"); break;
     }
-    
+
+    shutdown(connfd, 2);
     close(connfd);
   }
-  
+  close(listenfd);
   return 0;
 }
